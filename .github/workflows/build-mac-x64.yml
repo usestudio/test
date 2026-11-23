@@ -1,0 +1,51 @@
+name: build-mac-x64
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+jobs:
+  mac:
+    runs-on: macos-15
+    timeout-minutes: 150
+    steps:
+      - name: 检出私有仓库源码
+        uses: actions/checkout@v4
+        with:
+          repository: usestudio/cocorobo-teacher-client
+          ref: main
+          token: ${{ secrets.SRC_TOKEN }}
+
+      - name: 装 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 装主工程依赖
+        run: npm ci
+        env:
+          npm_config_registry: https://registry.npmmirror.com
+
+      - name: 检查运行时清单没被白标化
+        run: |
+          node -e "
+          const p = require('./resources/dsh-runtime/package.json');
+          const bad = Object.keys(p.dependencies || {}).filter((k) => k.startsWith('@cocobuddy'));
+          if (bad.length) { console.error('白标化: ' + bad.join(', ')); process.exit(1); }
+          "
+
+      - name: 准备两个架构的 dsh 运行时
+        run: node scripts/prepare-mac-runtime.js
+        env:
+          NODE_VERSION: latest-v24.x
+
+      - name: 构建 x64 包
+        run: bash scripts/ci-build-mac.sh x64
+
+      - name: 上传 x64 dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: x64-dmg
+          path: dist/CocoBuddy-*-x64.dmg
+          retention-days: 1
+        continue-on-error: false
