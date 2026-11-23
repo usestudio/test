@@ -1,0 +1,3 @@
+name: probe
+on:/n  workflow_dispatch:/njobs:/n  mac:/n    runs-on: macos-15
+    steps:/n      - run: echo MAC_RUNNER_OK
